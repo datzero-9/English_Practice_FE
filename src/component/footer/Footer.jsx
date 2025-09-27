@@ -9,7 +9,7 @@ const Footer = () => {
             Tích tiểu thành đại
           </p>
           <p className="text-red-600 text-sm">
-            Chỉ cần 5 từ mỗi ngày sau 1 năm đã là 1825 từ vựng
+            Chỉ cần 5 từ mỗi ngày sau 1 năm đã là 1825 từ vựng hahahah
           </p>
         </div>
     </div>
