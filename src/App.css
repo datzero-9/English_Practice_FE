@@ -1,0 +1,5 @@
+@import "tailwindcss";
+/* nếu muốn tách nhỏ:
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+*/
