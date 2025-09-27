@@ -12,7 +12,7 @@ const Main = () => {
               "url('/ant-bg.jpg')", // đổi path này thành ảnh bạn muốn (kiến nâng gỗ)
           }}
         >
-          
+          <h6>Xin chao mọi ngươi đây la phân test của minh cũng theo dõi minh nhé ./......</h6>
         </div>
 
        
