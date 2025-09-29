@@ -1,26 +1,27 @@
-import React from 'react'
-
+import React from 'react';
+// import { useNavigate } from 'react-router-dom';
 const Main = () => {
+  // const navigate = useNavigate();
+  const selectItems = [
+    { label: 'Leo hạng' },
+    { label: 'Flash card' },
+    { label: 'Cạnh tranh' },
+  ]
+  const className = "cursor-pointer text-sm bg-green-300 hover:bg-green-400 font-semibold px-6 py-3 rounded-xl shadow"
   return (
-    <div>
-      <main className="flex-1 flex flex-col items-center justify-center bg-white">
-
-        <div
-          className="w-full max-w-3xl bg-cover bg-center flex flex-col items-center justify-center py-10 px-4"
-          style={{
-            backgroundImage:
-              "url('/ant-bg.jpg')", // đổi path này thành ảnh bạn muốn (kiến nâng gỗ)
-          }}
-        >
-          <h6>Xin chao mọi ngươi đây la phân test của minh cũng theo dõi minh nhé ./......</h6>
-        </div>
-
-       
-
-
-      </main>
+    <div className="flex justify-center">
+      <div className="container h-[400px] p-2 bg-green-100 flex items-center justify-center gap-6">
+        {
+          selectItems.map((item, index) => (
+            <button key={index} className={className}>
+              {item.label}
+            </button>
+          ))
+        }
+        
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default Main
+export default Main;
