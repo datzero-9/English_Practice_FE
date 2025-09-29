@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FcGoogle } from "react-icons/fc";
 import { FaUserAlt, FaLock } from 'react-icons/fa';
@@ -9,14 +9,14 @@ import axios from 'axios';
 import { api } from '../helper/api'
 const Login = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
+    setIsLoading(true); // Bắt đầu loading
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log("User info:", user);
 
-      // 1. Lưu vào Firestore (tuỳ chọn, nếu dùng song song Firebase)
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         name: user.displayName,
@@ -24,7 +24,7 @@ const Login = () => {
         photoURL: user.photoURL,
       });
 
-      // 2. Gửi thông tin user về API backend
+      // Gửi user về backend
       await axios.post(`${api}/user`, {
         uid: user.uid,
         name: user.displayName,
@@ -37,8 +37,11 @@ const Login = () => {
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
       alert("Lỗi đăng nhập!");
+    } finally {
+      setIsLoading(false); // Dừng loading
     }
   };
+
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -55,11 +58,23 @@ const Login = () => {
         {/* Google Login */}
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:border-gray-400 text-gray-700 font-medium py-2.5 rounded-lg shadow-sm transition duration-200 mb-6"
+          disabled={isLoading}
+          className={`w-full flex items-center justify-center gap-3 border border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg shadow-sm transition duration-200 mb-6 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
+            }`}
         >
-          <FcGoogle size={24} />
-          Đăng nhập bằng Google
+          {isLoading ? (
+            <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+          ) : (
+            <>
+              <FcGoogle size={24} />
+              Đăng nhập bằng Google
+            </>
+          )}
         </button>
+
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-5">
