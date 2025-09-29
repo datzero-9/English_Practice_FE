@@ -6,8 +6,8 @@ const Header = () => {
   const styleItem = "cursor-pointer p-3 font-semibold text-sm rounded-sm hover:bg-green-400";
 
   const menuItems = [
-    { label: '🏠 Trang chủ', navigation: '/home' },
-    { label: '🏋️‍♀️ Luyện tập', navigation: '/test' },
+    { label: '🏠 Trang chủ', navigation: '/' },
+    { label: '🏋️‍♀️ Luyện tập', navigation: '/' },
     { label: '➕ Thêm từ vựng', navigation: '/' },
     { label: '📊 Bảng xếp hạng', navigation: '/' },
     { label: '⚙️ Cài đặt', navigation: '/' },
