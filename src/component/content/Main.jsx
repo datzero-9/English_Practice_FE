@@ -1,6 +1,6 @@
 import React from 'react';
 import { signOut } from 'firebase/auth';
-import { auth } from '../../helper/firebase'; // đúng đường dẫn auth của bạn nhé
+import { auth } from '../../helper/firebase';
 import { useNavigate } from 'react-router-dom';
 
 const Main = () => {
@@ -22,11 +22,14 @@ const Main = () => {
     { label: 'Cạnh tranh' },
   ];
 
-  const buttonClass ="cursor-pointer text-sm bg-green-300 hover:bg-green-400 font-semibold px-6 py-3 rounded-xl shadow";
+  const buttonClass =
+    "cursor-pointer text-sm bg-blue-500 hover:bg-blue-600 text-white " +
+    "font-semibold px-6 py-3 rounded-xl shadow transition-colors duration-200 " +
+    "focus:outline-none focus:ring-2 focus:ring-blue-300";
 
   return (
     <div className="flex justify-center">
-      <div className="container h-[400px] p-2 bg-green-100 flex flex-col items-center justify-center gap-6">
+      <div className="container h-[400px] p-4 bg-blue-50 flex flex-col items-center justify-center gap-6 rounded-2xl shadow-sm">
         <div className="flex gap-4">
           {selectItems.map((item, index) => (
             <button key={index} className={buttonClass}>
@@ -37,7 +40,7 @@ const Main = () => {
 
         <button
           onClick={handleLogout}
-          className="mt-4 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-xl shadow"
+          className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           Đăng xuất
         </button>
