@@ -10,7 +10,7 @@ const Main = () => {
     try {
       await signOut(auth);
       alert("Đăng xuất thành công!");
-      navigate("/home"); // quay về trang login
+      navigate("/"); // quay về trang login
     } catch (error) {
       console.error("Lỗi đăng xuất:", error);
     }
@@ -22,8 +22,7 @@ const Main = () => {
     { label: 'Cạnh tranh' },
   ];
 
-  const buttonClass =
-    "cursor-pointer text-sm bg-green-300 hover:bg-green-400 font-semibold px-6 py-3 rounded-xl shadow";
+  const buttonClass ="cursor-pointer text-sm bg-green-300 hover:bg-green-400 font-semibold px-6 py-3 rounded-xl shadow";
 
   return (
     <div className="flex justify-center">

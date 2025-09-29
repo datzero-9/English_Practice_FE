@@ -5,6 +5,8 @@ import { FaUserAlt, FaLock } from 'react-icons/fa';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, provider, db } from '../helper/firebase';
+import axios from 'axios';
+import { api } from '../helper/api'
 const Login = () => {
   const navigate = useNavigate();
 
@@ -13,7 +15,8 @@ const Login = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       console.log("User info:", user);
-      // Lưu thông tin user vào Firestore
+
+      // 1. Lưu vào Firestore (tuỳ chọn, nếu dùng song song Firebase)
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         name: user.displayName,
@@ -21,10 +24,19 @@ const Login = () => {
         photoURL: user.photoURL,
       });
 
+      // 2. Gửi thông tin user về API backend
+      await axios.post(`${api}/user`, {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL
+      });
+
       alert("Đăng nhập thành công!");
-      navigate("/home"); // Điều hướng sang trang chính
+      navigate("/home");
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
+      alert("Lỗi đăng nhập!");
     }
   };
 
