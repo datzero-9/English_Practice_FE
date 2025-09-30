@@ -7,14 +7,19 @@ const Main = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      alert("Đăng xuất thành công!");
-      navigate("/"); // quay về trang login
-    } catch (error) {
-      console.error("Lỗi đăng xuất:", error);
-    }
-  };
+  const ok = window.confirm("Bạn có chắc muốn đăng xuất?");
+  if (!ok) return; // người dùng bấm Hủy
+
+  try {
+    await signOut(auth);
+    alert("Đăng xuất thành công!");
+    navigate("/"); // quay về trang login
+  } catch (error) {
+    console.error("Lỗi đăng xuất:", error);
+    alert("Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.");
+  }
+};
+
 
   const selectItems = [
     { label: 'Leo hạng' },
@@ -40,7 +45,7 @@ const Main = () => {
 
         <button
           onClick={handleLogout}
-          className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl shadow transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           Đăng xuất
         </button>

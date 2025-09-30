@@ -7,10 +7,10 @@ const Header = () => {
 
   const menuItems = [
     { label: '🏠 Trang chủ', navigation: '/home' },
-    { label: '🏋️‍♀️ Luyện tập', navigation: '/test' },
-    { label: '➕ Thêm từ vựng', navigation: '/' },
-    { label: '📊 Bảng xếp hạng', navigation: '/' },
-    { label: '⚙️ Cài đặt', navigation: '/' },
+    { label: '🏋️‍♀️ Luyện tập', navigation: '/practice' },
+    { label: '➕ Thêm từ vựng', navigation: '/addvocabulary' },
+    { label: '📊 Bảng xếp hạng', navigation: '/Fix' },
+    { label: '⚙️ Cài đặt', navigation: '/Fix' },
   ];
 
   const baseItem =

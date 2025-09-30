@@ -4,7 +4,9 @@ import Login from './account/Login';
 import Register from './account/Register';
 import MainLayout from './MainLayout';
 import Main from './component/content/Main';
-import Test from './component/content/test';
+import Practice from './component/content/Practice';
+import AddVocabulary from './component/content/AddVocabulary';
+import Fix from './component/content/Fix';
 import PrivateRoute from './account/PrivateRoute';
 
 const App = () => {
@@ -19,7 +21,9 @@ const App = () => {
         <Route element={<PrivateRoute />}>
           <Route path="/" element={<MainLayout />}>
             <Route path="/home" element={<Main />} />
-            <Route path="/test" element={<Test />} />
+            <Route path="/practice" element={<Practice />} />
+            <Route path="/addvocabulary" element={<AddVocabulary />} />
+            <Route path="/Fix" element={<Fix />} />
           </Route>
         </Route>
       </Routes>
