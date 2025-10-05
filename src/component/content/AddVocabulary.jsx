@@ -77,7 +77,7 @@ console.log(user)
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full flex items-start justify-center bg-gray-50 px-4 py-6 sm:py-8">
+    <div className=" w-full flex items-start justify-center bg-gray-50 px-4 py-6 sm:py-8">
       <div className="w-full max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg">
         <div className="bg-white rounded-2xl shadow-lg px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 text-center">
