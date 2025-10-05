@@ -5,8 +5,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const AddVocabulary = () => {
+  const user = auth.currentUser;
+console.log(user)
   const navigate = useNavigate();
-
   const [form, setForm] = useState({
     english: "",
     vietnamese: "",
@@ -21,15 +22,18 @@ const AddVocabulary = () => {
   };
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
 
-    const user = auth.currentUser;
     if (!user) {
       alert("Bạn chưa đăng nhập. Vui lòng đăng nhập lại.");
       navigate("/");
       return;
     }
-
+    if (user?.uid !=="iZk7PAoI7Td7OUdiiuo7NsBPB9m2") {
+      alert("Bạn không có quyền thêm từ mới, vui lòng liên hệ admin để được mở khóa.");
+      return;
+    }
     const english = form.english.trim();
     const vietnamese = form.vietnamese.trim();
     const exampleEn = form.exampleEn.trim();
@@ -156,11 +160,10 @@ const AddVocabulary = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full min-h-[44px] font-semibold rounded-lg shadow transition text-white ${
-                  loading
+                className={`w-full min-h-[44px] font-semibold rounded-lg shadow transition text-white ${loading
                     ? "bg-blue-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700"
-                }`}
+                  }`}
               >
                 {loading ? "Đang lưu..." : "Lưu Từ Mới"}
               </button>

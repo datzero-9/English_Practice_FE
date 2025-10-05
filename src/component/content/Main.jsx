@@ -6,19 +6,24 @@ import { useNavigate } from 'react-router-dom';
 const Main = () => {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-  const ok = window.confirm("Bạn có chắc muốn đăng xuất?");
-  if (!ok) return; // người dùng bấm Hủy
+  const user = auth.currentUser;
+  console.log('Current user in Main:', user.displayName)
+  console.log('Current user in Main:', user.email)
 
-  try {
-    await signOut(auth);
-    alert("Đăng xuất thành công!");
-    navigate("/"); // quay về trang login
-  } catch (error) {
-    console.error("Lỗi đăng xuất:", error);
-    alert("Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.");
-  }
-};
+
+  const handleLogout = async () => {
+    const ok = window.confirm("Bạn có chắc muốn đăng xuất?");
+    if (!ok) return; // người dùng bấm Hủy
+
+    try {
+      await signOut(auth);
+      alert("Đăng xuất thành công!");
+      navigate("/"); // quay về trang login
+    } catch (error) {
+      console.error("Lỗi đăng xuất:", error);
+      alert("Có lỗi xảy ra khi đăng xuất. Vui lòng thử lại.");
+    }
+  };
 
 
   const selectItems = [
@@ -35,6 +40,8 @@ const Main = () => {
   return (
     <div className="flex justify-center">
       <div className="container h-[400px] p-4 bg-blue-50 flex flex-col items-center justify-center gap-6 rounded-2xl shadow-sm">
+        <div>xin chào <b>{user.displayName}</b></div>
+        <div>Welcom comback {user.email}</div>
         <div className="flex gap-4">
           {selectItems.map((item, index) => (
             <button key={index} className={buttonClass}>

@@ -1,27 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { api } from "../../helper/api";
-
-/**
- * Practice (responsive + không hiển thị tổng số từ)
- * - Nhập n -> GET ${api}/getRandomVocabularies?size=n
- * - FE random thứ tự câu + 4 đáp án (1 đúng + 3 sai)
- * - Không lặp từ đã hỏi (_id trong seenIds); nghĩa VI của từ đã hỏi vẫn dùng làm nhiễu
- * - Gửi số lượng mới: reset & clear seenIds
- */
+import { auth } from "../../helper/firebase";
 
 const Practice = () => {
-  // ---- state chính ----
+
+  const user = auth.currentUser;
+
+  // ---- STATE CHÍNH ----
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
-
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-
-  // số lượng mong muốn (mặc định lấy từ ?size= nếu có, không thì 20)
   const [desired, setDesired] = useState(() => {
     const sp = new URLSearchParams(window.location.search);
     const raw = sp.get("size");
@@ -29,10 +22,7 @@ const Practice = () => {
     return !raw || Number.isNaN(n) || n <= 0 ? 20 : n;
   });
 
-  // Track các _id đã hỏi (để không hỏi lại)
-  const seenIdsRef = useRef(new Set());
-
-  // ---- helpers ----
+  // ---- HÀM TRỢ GIÚP ----
   const shuffle = (arr) => {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -42,23 +32,23 @@ const Practice = () => {
     return a;
   };
 
-  // Xây câu hỏi (loại item đã seen; viPool dùng cả seen & unseen)
-  const buildQuestions = (itemsFromBE, desiredCount) => {
-    const seen = seenIdsRef.current;
-    const viPool = itemsFromBE.map((i) => i.vietnamese).filter(Boolean);
+  // TẠO DANH SÁCH CÂU HỎI
+  const buildQuestions = (items, desiredCount) => {
+    const viPool = items.map((i) => i.vietnamese).filter(Boolean);
 
-    const candidates = itemsFromBE.filter((it) => it?._id && !seen.has(String(it._id)));
-
-    const raw = candidates
+    const raw = items
       .map((it) => {
         const correct = it.vietnamese;
         const distractors = shuffle(
           viPool.filter((v) => v && v !== correct)
         ).slice(0, 3);
-        const options = shuffle([correct, ...distractors]).slice(0, 4);
+        const options = shuffle([correct, ...distractors]);
+
         return {
           id: String(it._id),
           english: it.english,
+          createdByName: it.createdByName,
+          createdById: it.createdById,
           correct,
           options,
           exampleEn: it.exampleEn || "",
@@ -67,18 +57,19 @@ const Practice = () => {
       })
       .filter((q) => q.id && q.english && q.correct && q.options?.length);
 
-    return shuffle(raw).slice(0, Math.min(desiredCount || 0, raw.length));
+    return shuffle(raw).slice(0, Math.min(desiredCount, raw.length));
   };
 
-  // ---- API ----
+  // GỌI API LẤY DỮ LIỆU
   const fetchData = async (n) => {
     try {
       setLoading(true);
       setErr("");
 
-      const res = await axios.get(`${api}/getRandomVocabularies`, { params: { size: n } });
+      const res = await axios.get(`${api}/getRandomVocabularies`, {
+        params: { size: n },
+      });
       const items = Array.isArray(res?.data?.data) ? res.data.data : [];
-
       const qs = buildQuestions(items, n);
 
       setQuestions(qs);
@@ -94,13 +85,12 @@ const Practice = () => {
     }
   };
 
-  // ---- effects ----
+  // CHẠY LÚC ĐẦU TIÊN
   useEffect(() => {
     fetchData(desired);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- handlers ----
+  // ---- XỬ LÝ CHÍNH ----
   const current = useMemo(() => questions[idx], [questions, idx]);
   const isCorrect = (opt) => opt === current?.correct;
   const isLast = idx === questions.length - 1;
@@ -109,8 +99,13 @@ const Practice = () => {
     if (!current || selected) return;
     setSelected(opt);
     setShowExplanation(true);
-    if (opt === current.correct) setScore((s) => s + 1);
-    if (current.id) seenIdsRef.current.add(current.id); // đánh dấu đã hỏi
+
+    if (opt === current.correct) {
+      setScore((s) => s + 1);
+    } else {
+      // Trả lời sai thì cho câu này xuất hiện lại cuối danh sách
+      setQuestions((prev) => [...prev, current]);
+    }
   };
 
   const next = () => {
@@ -128,24 +123,94 @@ const Practice = () => {
     setScore(0);
   };
 
-  // Gửi số lượng mới: reset + clear seenIds
   const onSubmitDesired = async (e) => {
     e.preventDefault();
     const n = Number(desired);
     const safe = Number.isNaN(n) || n <= 0 ? 20 : n;
-    seenIdsRef.current = new Set(); // xóa lịch sử
     await fetchData(safe);
   };
 
-  // ---- UI trạng thái ----
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteVocabulary = async (voca, user) => {
+    if (deleting) return; // tránh spam
+    setDeleting(true);
+
+    try {
+      // 🧩 Kiểm tra dữ liệu
+      if (!voca?.id || !user?.uid) {
+        alert("⚠️ Thiếu dữ liệu từ vựng hoặc thông tin người dùng!");
+        setDeleting(false);
+        return;
+      }
+
+      // 📤 Gửi request tới API
+      const info = { id: voca.id, createdById: user.uid };
+      const res = await axios.post(`${api}/deleteVocabulary`, info, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      console.log("📦 Phản hồi BE:", res.data);
+
+      // ✅ Thành công
+      if (res.status === 200 && res.data?.status !== false) {
+        alert("✅ Xóa từ vựng thành công!");
+        window.location.reload();
+      }
+      else {
+        alert(`⚠️ ${res.data?.message || "Không thể xóa từ vựng!"}`);
+      }
+
+    } catch (err) {
+      // ❌ Lỗi phía server hoặc quyền
+      console.error("❌ Lỗi khi xóa từ vựng:", err);
+
+      const status = err.response?.status;
+      const msg = err.response?.data?.message || "Lỗi khi xóa từ vựng!";
+
+      if (status === 403) {
+        alert("🚫 Bạn không có quyền xóa từ vựng này!");
+      } else if (status === 404) {
+        alert("❌ Không tìm thấy từ vựng cần xóa!");
+      } else if (status === 400) {
+        alert("⚠️ Thiếu dữ liệu gửi lên server!");
+      } else {
+        alert(`⚠️ ${msg}`);
+      }
+
+    } finally {
+      // 🔄 Luôn reset trạng thái
+      setDeleting(false);
+    }
+  };
+
+
+
+
+  // ---- UI ----
   if (loading) return <Shell><Box>Đang tải dữ liệu…</Box></Shell>;
   if (err) return <Shell><Box><p className="text-red-600">{err}</p></Box></Shell>;
-  if (!current) {
+  if (!current)
     return (
       <Shell>
         <Box>
-          <form onSubmit={onSubmitDesired} className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-            <label className="text-sm text-gray-700">Số lượng muốn lấy</label>
+
+          <p className="text-gray-700">
+            Không còn câu hỏi nào để luyện. Hãy nhập số mới để bắt đầu lại.
+          </p>
+        </Box>
+      </Shell>
+    );
+
+  return (
+    <Shell>
+      <Box>
+        <div>
+          <form
+            onSubmit={onSubmitDesired}
+            className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4"
+          >
+            <label className="text-sm text-gray-700">Số lượng câu</label>
             <div className="flex gap-2 w-full sm:w-auto">
               <input
                 type="number"
@@ -163,48 +228,26 @@ const Practice = () => {
               </button>
             </div>
           </form>
+        </div>
 
-          <p className="text-gray-700">
-            Không còn câu hỏi nào để luyện (hoặc số lượng yêu cầu vượt dữ liệu chưa dùng). Hãy nhập số mới để bắt đầu lại.
-          </p>
-        </Box>
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell>
-      <Box>
-        {/* Form nhập số lượng (responsive) */}
-        <form onSubmit={onSubmitDesired} className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-          <label className="text-sm text-gray-700">Số lượng muốn lấy</label>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <input
-              type="number"
-              value={desired}
-              onChange={(e) => setDesired(e.target.value)}
-              className="flex-1 sm:w-24 border rounded-lg px-3 py-2"
-              placeholder="VD: 50"
-              min={1}
-            />
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm"
-            >
-              Gửi
-            </button>
-          </div>
-        </form>
-
-        {/* Header: Câu x/y + Điểm + Câu tiếp theo (responsive) */}
+        <div className="flex justify-end">
+          <span className="text-sm text-gray-600">{user.displayName}</span>
+        </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
             Câu {idx + 1}/{questions.length}
+            <button
+              onClick={() => deleteVocabulary(current, user)}
+              disabled={deleting}
+              className="p-1 mx-1 bg-red-600 text-white text-[10px] rounded"
+            >
+              {deleting ? "Đang xóa..." : "Xóa từ"}
+            </button>
+
           </h2>
 
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">Điểm: {score}</span>
-
             {showExplanation && !isLast && (
               <button
                 onClick={next}
@@ -219,10 +262,15 @@ const Practice = () => {
         {/* Câu hỏi */}
         <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-2">
           Chọn nghĩa đúng của từ:{" "}
-          <span className="text-blue-600 break-words">{current.english}</span>
+          <span className="text-blue-600 font-bold">
+            {current.english
+              ? current.english.charAt(0).toUpperCase() + current.english.slice(1)
+              : ""}
+          </span>
+          <span className="text-[10px]"> (by {current.createdByName})</span>
         </h3>
 
-        {/* Lựa chọn đáp án (full width trên mobile) */}
+        {/* Đáp án */}
         <div className="grid grid-cols-1 gap-2 sm:gap-3">
           {current.options.map((opt, i) => (
             <button
@@ -231,17 +279,18 @@ const Practice = () => {
               disabled={!!selected}
               className={[
                 "text-left border rounded-lg px-4 py-2 sm:py-3 transition min-h-[44px]",
-                "break-words", // xuống dòng nếu dài
+                "break-words",
                 selected === opt
                   ? isCorrect(opt)
                     ? "bg-green-100 border-green-500 text-green-700"
                     : "bg-red-100 border-red-500 text-red-700"
                   : selected && isCorrect(opt)
-                  ? "bg-green-50 border-green-400"
-                  : "hover:bg-blue-50",
+                    ? "bg-green-50 border-green-400"
+                    : "hover:bg-blue-50",
               ].join(" ")}
             >
-              <strong className="mr-1">{String.fromCharCode(65 + i)}.</strong> {opt}
+              <strong className="mr-1">{String.fromCharCode(65 + i)}.</strong>{" "}
+              {opt ? opt.charAt(0).toUpperCase() + opt.slice(1) : ""}
             </button>
           ))}
         </div>
@@ -259,11 +308,16 @@ const Practice = () => {
               <p className="text-gray-600">
                 <strong>Giải thích (VI):</strong> {current.exampleVi || "—"}
               </p>
+              {selected !== current.correct && (
+                <p className="text-red-600 text-sm italic">
+                  ❌ Bạn trả lời sai — Câu này sẽ xuất hiện lại ở cuối bài!
+                </p>
+              )}
             </>
           )}
         </div>
 
-        {/* Điều hướng dưới (mobile-friendly) */}
+        {/* Điều hướng */}
         <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
           {!showExplanation && (
             <button
@@ -273,7 +327,6 @@ const Practice = () => {
               Xem giải thích
             </button>
           )}
-
           {showExplanation && isLast && (
             <button
               onClick={restart}
@@ -288,16 +341,17 @@ const Practice = () => {
   );
 };
 
-/* Lớp vỏ: đảm bảo padding, safe area và canh giữa theo màn hình */
+// ----- COMPONENT NHỎ -----
+
+
 const Shell = ({ children }) => (
   <div className="min-h-screen bg-gray-50">
-    <div className="mx-auto max-w-screen-md lg:max-w-screen-lg px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="mx-auto max-w-screen-md px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {children}
     </div>
   </div>
 );
 
-/* Hộp khung nội dung */
 const Box = ({ children }) => (
   <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">{children}</div>
 );
