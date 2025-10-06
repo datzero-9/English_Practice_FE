@@ -7,7 +7,7 @@ const Header = () => {
 
   const menuItems = [
     { label: '🏠 Trang chủ', navigation: '/home' },
-    { label: '🏋️‍♀️ Luyện tập', navigation: '/practice' },
+    { label: '🏋️‍♀️ Luyện tập', navigation: '/selection' },
     { label: '➕ Thêm từ vựng', navigation: '/addvocabulary' },
     { label: '📊 Bảng xếp hạng', navigation: '/Fix' },
     { label: '⚙️ Cài đặt', navigation: '/Fix' },

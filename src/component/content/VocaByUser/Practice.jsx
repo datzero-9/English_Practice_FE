@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { api } from "../../helper/api";
-import { auth } from "../../helper/firebase";
+import { api } from "../../../helper/api";
+import { auth } from "../../../helper/firebase";
 
 const Practice = () => {
 
@@ -185,6 +185,24 @@ const Practice = () => {
   };
 
 
+  const handleMarkAsLearned = async (current, user) => {
+    try {
+      // 📨 Gửi request và đợi backend trả về kết quả
+      const res = await axios.post(`${api}/markAsMemorized`, {
+        userId: user,
+        vocabId: current.id,
+      });
+
+      // 🧾 In ra response đầy đủ
+      console.log("📩 Response từ server:", res.data);
+      alert(res.data.message);
+    } catch (err) {
+      console.error("❌ Lỗi khi đánh dấu Đã thuộc:", err);
+      alert("Có lỗi xảy ra khi đánh dấu từ này!");
+    }
+  };
+
+
 
 
   // ---- UI ----
@@ -268,6 +286,16 @@ const Practice = () => {
               : ""}
           </span>
           <span className="text-[10px]"> (by {current.createdByName})</span>
+
+
+          <button
+            onClick={() => handleMarkAsLearned(current, user.uid)}
+            className="p-1 mx-1 bg-blue-600 text-white text-[10px] rounded"
+          >
+            Đã thuộc
+          </button>
+
+
         </h3>
 
         {/* Đáp án */}
