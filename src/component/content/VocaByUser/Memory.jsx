@@ -7,7 +7,10 @@ const Memory = () => {
   const user = auth.currentUser;
 
   // ---- STATE ----
-  const [mode, setMode] = useState("unmemorized"); // "unmemorized" | "memorized"
+  const [mode, setMode] = useState("unmemorized");
+  const [items, setItems] = useState([]); // toàn bộ danh sách vocab (theo mode)
+  const [limit, setLimit] = useState(20);
+
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -27,14 +30,14 @@ const Memory = () => {
   };
 
   // ---- TẠO DANH SÁCH CÂU HỎI ----
-  const buildQuestions = (items) => {
-    const viPool = items.map((i) => i.vietnamese).filter(Boolean);
-    const raw = items
+  const buildQuestions = (subset, fullPool) => {
+    const viPool = fullPool.map((i) => i.vietnamese).filter(Boolean); // ❗ pool toàn bộ list
+    const raw = subset
       .map((it) => {
         const correct = it.vietnamese;
         const distractors = shuffle(
           viPool.filter((v) => v && v !== correct)
-        ).slice(0, 3);
+        ).slice(0, 3); // chọn 3 nghĩa ngẫu nhiên khác nhau từ toàn bộ
         const options = shuffle([correct, ...distractors]);
 
         return {
@@ -49,23 +52,37 @@ const Memory = () => {
       })
       .filter((q) => q.id && q.english && q.correct && q.options?.length);
 
-    return shuffle(raw);
+    return shuffle(raw); // random thứ tự câu hỏi trong nhóm
   };
 
-  // ---- GỌI API ----
+  const resetRun = () => {
+    setIdx(0);
+    setSelected(null);
+    setShowExplanation(false);
+    setScore(0);
+  };
+
+  const rebuildFromLocal = () => {
+    const subset = (items || []).slice(0, Number(limit) || 1);
+    const qs = buildQuestions(subset, items); // ✅ pool distractors lấy từ toàn bộ items
+    setQuestions(qs);
+    resetRun();
+  };
+
   const fetchData = async (type) => {
     try {
       setLoading(true);
+      setErr("");
       const res = await axios.get(`${api}/getAllVocabulariesByUser/${user.uid}`);
+      console.log("Fetched vocabularies:", res.data);
       const data = res.data?.data || {};
-      const items = type === "memorized" ? data.memorized : data.unmemorized;
+      const base = type === "memorized" ? data.memorized : data.unmemorized;
 
-      const qs = buildQuestions(items || []);
+      setItems(base || []);
+      const subset = (base || []).slice(0, Number(limit) || 1);
+      const qs = buildQuestions(subset, base || []);
       setQuestions(qs);
-      setIdx(0);
-      setSelected(null);
-      setShowExplanation(false);
-      setScore(0);
+      resetRun();
     } catch (e) {
       console.error(e);
       setErr("Không thể tải dữ liệu. Vui lòng thử lại.");
@@ -76,6 +93,7 @@ const Memory = () => {
 
   useEffect(() => {
     if (user?.uid) fetchData(mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, user?.uid]);
 
   // ---- LOGIC QUIZ ----
@@ -91,7 +109,7 @@ const Memory = () => {
     if (opt === current.correct) {
       setScore((s) => s + 1);
     } else {
-      setQuestions((prev) => [...prev, current]); // sai thì đẩy câu này về cuối
+      setQuestions((prev) => [...prev, current]); // sai -> đẩy về cuối
     }
   };
 
@@ -111,28 +129,28 @@ const Memory = () => {
   };
 
   // ---- MARK / UNMARK ----
-  const handleMarkAsLearned = async (current, user) => {
+  const handleMarkAsLearned = async (current, userId) => {
     try {
       const res = await axios.post(`${api}/markAsMemorized`, {
-        userId: user,
+        userId,
         vocabId: current.id,
       });
       alert(res.data.message);
-      fetchData("unmemorized"); // refresh list
+      fetchData(mode);
     } catch (err) {
       console.error("❌ Lỗi khi đánh dấu Đã thuộc:", err);
       alert("Có lỗi xảy ra khi đánh dấu từ này!");
     }
   };
 
-  const handleUnmarkAsLearned = async (current, user) => {
+  const handleUnmarkAsLearned = async (current, userId) => {
     try {
       const res = await axios.post(`${api}/unmarkAsMemorized`, {
-        userId: user,
+        userId,
         vocabId: current.id,
       });
       alert(res.data.message);
-      fetchData("memorized"); // refresh list
+      fetchData(mode);
     } catch (err) {
       console.error("❌ Lỗi khi bỏ đánh dấu:", err);
       alert("Có lỗi xảy ra khi bỏ đánh dấu từ này!");
@@ -140,13 +158,37 @@ const Memory = () => {
   };
 
   // ---- UI ----
-  if (loading) return <Shell><Box>Đang tải dữ liệu…</Box></Shell>;
-  if (err) return <Shell><Box><p className="text-red-600">{err}</p></Box></Shell>;
+  if (loading)
+    return (
+      <Shell>
+        <Box>Đang tải dữ liệu…</Box>
+      </Shell>
+    );
+
+  if (err)
+    return (
+      <Shell>
+        <Box>
+          <p className="text-red-600">{err}</p>
+        </Box>
+      </Shell>
+    );
+
   if (!current)
     return (
       <Shell>
         <Box>
-          <p className="text-gray-700">Không có câu hỏi nào trong chế độ này.</p>
+          <HeaderBar
+            mode={mode}
+            setMode={setMode}
+            limit={limit}
+            setLimit={setLimit}
+            total={items.length}
+            onApply={rebuildFromLocal}
+          />
+          <p className="text-gray-700 mt-4">
+            Không có câu hỏi nào trong chế độ này.
+          </p>
         </Box>
       </Shell>
     );
@@ -154,29 +196,15 @@ const Memory = () => {
   return (
     <Shell>
       <Box>
-        {/* Chọn chế độ */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setMode("unmemorized")}
-            className={`px-4 py-2 rounded-lg text-sm ${
-              mode === "unmemorized"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-          >
-            Học từ chưa thuộc
-          </button>
-          <button
-            onClick={() => setMode("memorized")}
-            className={`px-4 py-2 rounded-lg text-sm ${
-              mode === "memorized"
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 text-gray-800"
-            }`}
-          >
-            Ôn từ đã thuộc
-          </button>
-        </div>
+        {/* Thanh chọn chế độ + nhập số lượng + Gửi */}
+        <HeaderBar
+          mode={mode}
+          setMode={setMode}
+          limit={limit}
+          setLimit={setLimit}
+          total={items.length}
+          onApply={rebuildFromLocal}
+        />
 
         {/* Tiêu đề */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
@@ -184,7 +212,9 @@ const Memory = () => {
             Câu {idx + 1}/{questions.length}
           </h2>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Điểm: {score}</span>
+            <span className="text-sm text-gray-600">
+              Đang luyện: {questions.length} từ · Điểm: {score}
+            </span>
             {showExplanation && !isLast && (
               <button
                 onClick={next}
@@ -234,8 +264,8 @@ const Memory = () => {
                     ? "bg-green-100 border-green-500 text-green-700"
                     : "bg-red-100 border-red-500 text-red-700"
                   : selected && isCorrect(opt)
-                    ? "bg-green-50 border-green-400"
-                    : "hover:bg-blue-50",
+                  ? "bg-green-50 border-green-400"
+                  : "hover:bg-blue-50",
               ].join(" ")}
             >
               <strong className="mr-1">{String.fromCharCode(65 + i)}.</strong>{" "}
@@ -290,9 +320,61 @@ const Memory = () => {
   );
 };
 
-// ----- COMPONENT KHUNG -----
+// ----- COMPONENT PHỤ: Thanh điều khiển đầu trang -----
+const HeaderBar = ({ mode, setMode, limit, setLimit, total, onApply }) => (
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+    <div className="flex gap-2">
+      <button
+        onClick={() => setMode("unmemorized")}
+        className={`px-4 py-2 rounded-lg text-sm ${
+          mode === "unmemorized"
+            ? "bg-blue-600 text-white"
+            : "bg-gray-200 text-gray-800"
+        }`}
+      >
+        Học từ chưa thuộc
+      </button>
+      <button
+        onClick={() => setMode("memorized")}
+        className={`px-4 py-2 rounded-lg text-sm ${
+          mode === "memorized"
+            ? "bg-green-600 text-white"
+            : "bg-gray-200 text-gray-800"
+        }`}
+      >
+        Ôn từ đã thuộc
+      </button>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <label className="text-sm text-gray-600">Số lượng từ:</label>
+      <input
+        type="number"
+        min={1}
+        max={Math.max(1, total || 1)}
+        value={limit}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setLimit(Number.isFinite(v) ? v : 20);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && onApply()}
+        className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="20"
+      />
+      <button
+        onClick={onApply}
+        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm"
+        title={`Hiện có ${total ?? 0} từ trong danh sách`}
+        disabled={!total}
+      >
+        Gửi
+      </button>
+    </div>
+  </div>
+);
+
 const Shell = ({ children }) => (
-  <div className=" bg-gray-50">
+  <div className="bg-gray-50">
     <div className="mx-auto max-w-screen-md px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {children}
     </div>
